@@ -1,0 +1,84 @@
+name: Autograding SQL
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  autograding:
+    name: Corrección automática
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: jardineria
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout del repositorio del alumno
+        uses: actions/checkout@v4
+
+      - name: Esperar a que MySQL esté listo
+        run: |
+          until mysqladmin ping -h 127.0.0.1 -u root -proot --silent; do
+            echo "Esperando a MySQL..."
+            sleep 3
+          done
+
+      - name: Crear base de datos y cargar schema
+        run: |
+          mysql -h 127.0.0.1 -u root -proot < schema.sql
+          echo "✅ Schema cargado correctamente"
+
+      - name: Cargar datos de ejemplo
+        run: |
+          mysql -h 127.0.0.1 -u root -proot < datos.sql
+          echo "✅ Datos cargados correctamente"
+
+      - name: Ejecutar soluciones del alumno - Nivel 1
+        run: |
+          mysql -h 127.0.0.1 -u root -proot jardineria \
+            < ejercicios/nivel1_consultas_basicas.sql \
+            && echo "✅ Nivel 1 ejecutado sin errores de sintaxis" \
+            || echo "❌ Error de sintaxis en Nivel 1"
+
+      - name: Ejecutar soluciones del alumno - Nivel 2
+        run: |
+          mysql -h 127.0.0.1 -u root -proot jardineria \
+            < ejercicios/nivel2_joins.sql \
+            && echo "✅ Nivel 2 ejecutado sin errores de sintaxis" \
+            || echo "❌ Error de sintaxis en Nivel 2"
+
+      - name: Ejecutar soluciones del alumno - Nivel 3
+        run: |
+          mysql -h 127.0.0.1 -u root -proot jardineria \
+            < ejercicios/nivel3_agregacion.sql \
+            && echo "✅ Nivel 3 ejecutado sin errores de sintaxis" \
+            || echo "❌ Error de sintaxis en Nivel 3"
+
+      - name: Ejecutar soluciones del alumno - Nivel 4
+        run: |
+          mysql -h 127.0.0.1 -u root -proot jardineria \
+            < ejercicios/nivel4_subconsultas.sql \
+            && echo "✅ Nivel 4 ejecutado sin errores de sintaxis" \
+            || echo "❌ Error de sintaxis en Nivel 4"
+
+      - name: Resumen de entrega
+        run: |
+          echo "================================================"
+          echo "  ENTREGA PROCESADA CORRECTAMENTE"
+          echo "  Alumno: ${{ github.actor }}"
+          echo "  Fecha:  $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "================================================"
+          echo "El profesor revisará manualmente las soluciones."
